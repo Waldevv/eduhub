@@ -454,14 +454,16 @@ async function everyoneDenyWithBotAccess(guildId: string) {
   return overwrites;
 }
 
+const FRONTEND_URL = process.env.FRONTEND_URL ?? 'https://eduhub.vercel.app';
+
 const ANNOUNCEMENT_MESSAGES: Record<string, { initial: string; update: string }> = {
   content: {
-    initial: '📢 @everyone **Conteúdos disponíveis!** Novos materiais foram cadastrados nesta aula. Acesse a plataforma para visualizar: https://eduhub.vercel.app',
-    update:  '📢 @everyone **Novos conteúdos adicionados!** Novos materiais foram adicionados à aula. Confira na plataforma: https://eduhub.vercel.app',
+    initial: `📢 @everyone **Conteúdos disponíveis!** Novos materiais foram cadastrados nesta aula. Acesse a plataforma para visualizar: ${FRONTEND_URL}`,
+    update:  `📢 @everyone **Novos conteúdos adicionados!** Novos materiais foram adicionados à aula. Confira na plataforma: ${FRONTEND_URL}`,
   },
   activity: {
-    initial: '📋 @everyone **Atividades disponíveis!** Atividades foram cadastradas nesta aula. Acesse a plataforma: https://eduhub.vercel.app',
-    update:  '📋 @everyone **Novas atividades adicionadas!** Novas atividades foram adicionadas à aula. Confira na plataforma: https://eduhub.vercel.app',
+    initial: `📋 @everyone **Atividades disponíveis!** Atividades foram cadastradas nesta aula. Acesse a plataforma: ${FRONTEND_URL}`,
+    update:  `📋 @everyone **Novas atividades adicionadas!** Novas atividades foram adicionadas à aula. Confira na plataforma: ${FRONTEND_URL}`,
   },
 };
 
