@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { BookOpen, Users, Calendar, Loader2 } from 'lucide-react';
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api';
 
 function calcAge(birthDate: string): number | null {
   if (!birthDate) return null;
@@ -59,7 +59,7 @@ export default function CompleteProfilePage() {
       return;
     }
 
-    fetch(`${BASE_URL}/api/auth/me`, {
+    fetch(`${BASE_URL}/auth/me`, {
       headers: {
         Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
       },
@@ -111,7 +111,7 @@ export default function CompleteProfilePage() {
     try {
       const token = localStorage.getItem('auth_token')!;
 
-      const res = await fetch(`${BASE_URL}/api/auth/complete-profile`, {
+      const res = await fetch(`${BASE_URL}/auth/complete-profile`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

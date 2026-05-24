@@ -6,7 +6,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { BookOpen, Users, ArrowLeft } from 'lucide-react';
 
-const DISCORD_AUTH_URL = 'http://localhost:3001/api/auth/discord';
+const DISCORD_AUTH_URL = `${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api'}/auth/discord`;
 
 export default function SignupPage() {
   const router = useRouter();
