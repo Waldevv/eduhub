@@ -1,0 +1,404 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Usuario {
+  id            String   @id @default(uuid())
+  name          String
+  email         String   @unique
+  password_hash String?
+  discord_id    String?  @unique
+  avatar        String?
+  role              String    @default("pending")
+  profile_completed Boolean   @default(false)
+  birth_date        DateTime?
+  gender            String?
+  discord_access_token  String?
+  discord_token_expires DateTime?
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+
+  courses       Curso[]
+  enrollments   Matricula[]
+}
+
+model Curso {
+  id               String   @id @default(uuid())
+  teacher_id       String
+  title            String
+  description      String?
+  category         String?
+  objectives       String?
+  start_date       DateTime?
+  end_date         DateTime?
+  status           String   @default("draft")
+  invite_code      String?  @unique
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  teacher          Usuario        @relation(fields: [teacher_id], references: [id])
+  units            Unidade[]
+  enrollments      Matricula[]
+  discord_server   ServidorDiscord?
+}
+
+model Unidade {
+  id                  String   @id @default(uuid())
+  course_id           String
+  title               String
+  description         String?
+  pedagogical_guidance String?
+  sequence_order      Int
+  status              String   @default("draft")
+  is_published        Boolean  @default(false)
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
+
+  discord_category_id String?
+
+  course              Curso              @relation(fields: [course_id], references: [id], onDelete: Cascade)
+  blocks              Bloco[]
+  progress            ProgressoUnidade[]
+  completion_rule     RegraConclusaoUnidade?
+  announcement_channels CanalDiscord[]   @relation("UnitAnnouncementChannels")
+}
+
+model Bloco {
+  id               String   @id @default(uuid())
+  unit_id          String
+  title            String
+  block_type       String
+  sequence_order   Int
+  is_required      Boolean  @default(false)
+  status           String   @default("draft")
+  completion_mode  String   @default("manual")
+  config_json      Json?
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  unit             Unidade          @relation(fields: [unit_id], references: [id], onDelete: Cascade)
+  content          BlocoConteudo?
+  activity         BlocoAtividade?
+  interaction      BlocoInteracao?
+  consolidation    BlocoConsolidacao?
+  progress         ProgressoBloco[]
+  rules_as_source  RegraBloco[]     @relation("SourceBlock")
+  rules_as_target  RegraBloco[]     @relation("TargetBlock")
+}
+
+model BlocoConteudo {
+  id           String  @id @default(uuid())
+  block_id     String  @unique
+  content_type String
+  body_text    String?
+  url          String?
+  stored_name  String?
+  open_in_new_tab    Boolean @default(false)
+  require_full_watch Boolean @default(false)
+  file_id      String?
+
+  block        Bloco   @relation(fields: [block_id], references: [id], onDelete: Cascade)
+  file         Arquivo? @relation(fields: [file_id], references: [id])
+}
+
+model BlocoAtividade {
+  id                  String    @id @default(uuid())
+  block_id            String    @unique
+  activity_type       String
+  completion_criteria String    @default("submission")
+  approval_criteria   String?
+  max_score           Decimal?
+  passing_score       Decimal?
+  due_date            DateTime?
+  time_limit_minutes  Int?
+  max_attempts        Int?
+  question_order_mode String    @default("sequential")
+  attempt_rule        String    @default("best")
+  allow_late_submission Boolean @default(false)
+  late_penalty_percent Decimal?
+  validation_mode     String?
+  url                 String?
+  uses_rubric         Boolean   @default(false)
+  quiz_id             String?
+  description         String?
+
+  block               Bloco          @relation(fields: [block_id], references: [id], onDelete: Cascade)
+  quiz                Questionario?  @relation(fields: [quiz_id], references: [id])
+  rubric              RubricaAtividade[]
+  submissions         Submissao[]
+}
+
+model BlocoInteracao {
+  id                  String    @id @default(uuid())
+  block_id            String    @unique
+  interaction_type    String
+  completion_criteria String    @default("access")
+  title               String?
+  initial_message     String?
+  scheduled_at        DateTime?
+  channel_id          String?
+
+  block               Bloco          @relation(fields: [block_id], references: [id], onDelete: Cascade)
+  channel             CanalDiscord?  @relation(fields: [channel_id], references: [id])
+  rubric              RubricaInteracao[]
+}
+
+model BlocoConsolidacao {
+  id                  String    @id @default(uuid())
+  block_id            String    @unique
+  consolidation_type  String
+  completion_criteria String    @default("access")
+  title               String?
+  summary_text        String?
+  scheduled_at        DateTime?
+  max_attempts        Int?
+  time_limit_minutes  Int?
+  question_order_mode String    @default("sequential")
+  passing_score       Decimal?
+  quiz_id             String?
+  channel_id          String?
+  file_id             String?
+
+  block               Bloco         @relation(fields: [block_id], references: [id], onDelete: Cascade)
+  channel             CanalDiscord? @relation("ConsolidacaoChannel", fields: [channel_id], references: [id])
+}
+
+model RegraBloco {
+  id              String  @id @default(uuid())
+  unit_id         String
+  source_block_id String
+  target_block_id String
+  rule_type       String  @default("completion")
+  condition_value String?
+  description     String?
+
+  source_block    Bloco   @relation("SourceBlock", fields: [source_block_id], references: [id], onDelete: Cascade)
+  target_block    Bloco   @relation("TargetBlock", fields: [target_block_id], references: [id], onDelete: Cascade)
+}
+
+model RegraConclusaoUnidade {
+  id                       String  @id @default(uuid())
+  unit_id                  String  @unique
+  rule_type                String  @default("all_required")
+  required_percentage      Decimal?
+  requires_all_required_blocks Boolean @default(true)
+  requires_activity_approval   Boolean @default(false)
+  description              String?
+
+  unit                     Unidade @relation(fields: [unit_id], references: [id], onDelete: Cascade)
+}
+
+model Questionario {
+  id          String   @id @default(uuid())
+  title       String
+  description String?
+  created_by  String
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  questions   QuestaoQuestionario[]
+  activities  BlocoAtividade[]
+}
+
+model QuestaoQuestionario {
+  id              String  @id @default(uuid())
+  quiz_id         String
+  statement       String
+  question_type   String  @default("multiple_choice")
+  sequence_order  Int
+  score           Decimal @default(1)
+
+  quiz            Questionario      @relation(fields: [quiz_id], references: [id], onDelete: Cascade)
+  options         OpcaoQuestionario[]
+}
+
+model OpcaoQuestionario {
+  id             String  @id @default(uuid())
+  question_id    String
+  option_text    String
+  is_correct     Boolean @default(false)
+  sequence_order Int
+
+  question       QuestaoQuestionario @relation(fields: [question_id], references: [id], onDelete: Cascade)
+}
+
+model Rubrica {
+  id          String   @id @default(uuid())
+  title       String
+  rubric_type String   @default("activity")
+  created_by  String
+  created_at  DateTime @default(now())
+
+  criteria             CriterioRubrica[]
+  activity_rubrics     RubricaAtividade[]
+  interaction_rubrics  RubricaInteracao[]
+}
+
+model CriterioRubrica {
+  id             String  @id @default(uuid())
+  rubric_id      String
+  name           String
+  sequence_order Int
+
+  rubric         Rubrica       @relation(fields: [rubric_id], references: [id], onDelete: Cascade)
+  levels         NivelRubrica[]
+}
+
+model NivelRubrica {
+  id             String  @id @default(uuid())
+  criterion_id   String
+  level_name     String
+  score_value    Decimal
+  sequence_order Int
+
+  criterion      CriterioRubrica @relation(fields: [criterion_id], references: [id], onDelete: Cascade)
+}
+
+model RubricaAtividade {
+  id                String  @id @default(uuid())
+  activity_block_id String
+  rubric_id         String
+
+  activity_block    BlocoAtividade @relation(fields: [activity_block_id], references: [id], onDelete: Cascade)
+  rubric            Rubrica        @relation(fields: [rubric_id], references: [id])
+}
+
+model RubricaInteracao {
+  id                   String  @id @default(uuid())
+  interaction_block_id String
+  rubric_id            String
+
+  interaction_block    BlocoInteracao @relation(fields: [interaction_block_id], references: [id], onDelete: Cascade)
+  rubric               Rubrica        @relation(fields: [rubric_id], references: [id])
+}
+
+model Matricula {
+  id          String   @id @default(uuid())
+  course_id   String
+  student_id  String
+  status      String   @default("active")
+  enrolled_at DateTime @default(now())
+
+  course      Curso    @relation(fields: [course_id], references: [id], onDelete: Cascade)
+  student     Usuario  @relation(fields: [student_id], references: [id])
+
+  @@unique([course_id, student_id])
+}
+
+model ProgressoUnidade {
+  id                    String   @id @default(uuid())
+  unit_id               String
+  student_id            String
+  status                String   @default("not_started")
+  completion_percentage Decimal  @default(0)
+  is_approved           Boolean  @default(false)
+  started_at            DateTime?
+  completed_at          DateTime?
+
+  unit                  Unidade  @relation(fields: [unit_id], references: [id], onDelete: Cascade)
+
+  @@unique([unit_id, student_id])
+}
+
+model ProgressoBloco {
+  id             String   @id @default(uuid())
+  block_id       String
+  student_id     String
+  status         String   @default("locked")
+  is_completed   Boolean  @default(false)
+  is_approved    Boolean  @default(false)
+  started_at     DateTime?
+  completed_at   DateTime?
+
+  block          Bloco    @relation(fields: [block_id], references: [id], onDelete: Cascade)
+
+  @@unique([block_id, student_id])
+}
+
+model Submissao {
+  id               String   @id @default(uuid())
+  activity_block_id String
+  student_id       String
+  attempt_number   Int      @default(1)
+  submitted_at     DateTime @default(now())
+  score            Decimal?
+  is_late          Boolean  @default(false)
+  is_approved      Boolean  @default(false)
+  feedback_text    String?
+  graded_by        String?
+  graded_at        DateTime?
+  submission_data  Json?
+
+  activity_block   BlocoAtividade     @relation(fields: [activity_block_id], references: [id], onDelete: Cascade)
+  quiz_responses   RespostaQuestionario[]
+  rubric_eval      AvaliacaoRubrica[]
+}
+
+model RespostaQuestionario {
+  id               String  @id @default(uuid())
+  submission_id    String
+  question_id      String
+  selected_option_id String?
+  answer_text      String?
+  is_correct       Boolean @default(false)
+  sequence_order   Int
+  score_obtained   Decimal @default(0)
+
+  submission       Submissao @relation(fields: [submission_id], references: [id], onDelete: Cascade)
+}
+
+model AvaliacaoRubrica {
+  id            String  @id @default(uuid())
+  submission_id String
+  rubric_id     String
+  total_score   Decimal
+  final_comment String?
+
+  submission    Submissao @relation(fields: [submission_id], references: [id], onDelete: Cascade)
+}
+
+model Arquivo {
+  id            String   @id @default(uuid())
+  original_name String
+  stored_name   String
+  mime_type     String
+  storage_url   String
+  uploaded_by   String
+  created_at    DateTime @default(now())
+
+  content_blocks BlocoConteudo[]
+}
+
+model ServidorDiscord {
+  id                 String  @id @default(uuid())
+  course_id          String  @unique
+  teacher_id         String
+  discord_guild_id   String  @unique
+  server_name        String
+  is_active          Boolean @default(true)
+
+  course             Curso         @relation(fields: [course_id], references: [id], onDelete: Cascade)
+  channels           CanalDiscord[]
+}
+
+model CanalDiscord {
+  id                  String  @id @default(uuid())
+  server_id           String
+  discord_channel_id  String
+  name                String
+  channel_type        String
+  created_by_platform Boolean @default(false)
+  is_active           Boolean @default(true)
+  unit_id             String?
+  block_type_group    String?
+
+  server              ServidorDiscord   @relation(fields: [server_id], references: [id], onDelete: Cascade)
+  unit                Unidade?          @relation("UnitAnnouncementChannels", fields: [unit_id], references: [id], onDelete: SetNull)
+  interaction_blocks  BlocoInteracao[]
+  consolidation_blocks BlocoConsolidacao[] @relation("ConsolidacaoChannel")
+}
