@@ -17,7 +17,7 @@ import {
   Linkedin,
 } from 'lucide-react';
 
-const DISCORD_AUTH_URL = `${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api'}/auth/discord`;
+const DISCORD_AUTH_URL = `${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'}/api/auth/discord`;
 
 function LoginModal({ onClose }: { onClose: () => void }) {
   return (
