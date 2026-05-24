@@ -222,6 +222,7 @@ export interface DiscordServer {
   discord_guild_id: string;
   server_name: string;
   is_active: boolean;
+  discord_invite_url?: string | null;
   channels: DiscordChannel[];
 }
 
@@ -243,6 +244,9 @@ export const discordApi = {
 
   unlinkServer: (courseId: string) =>
     request<void>(`/api/discord/server/${courseId}`, { method: 'DELETE' }),
+
+  regenerateInvite: (courseId: string) =>
+    request<{ discord_invite_url: string }>(`/api/discord/server/${courseId}/regenerate-invite`, { method: 'POST' }),
 
   getUserGuilds: () =>
     request<{ id: string; name: string; icon: string | null; owner: boolean }[]>('/api/discord/user-guilds'),

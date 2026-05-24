@@ -311,6 +311,24 @@ router.get('/server/:courseId', async (req: Request, res: Response) => {
   }
 });
 
+router.post('/server/:courseId/regenerate-invite', async (req: Request, res: Response) => {
+  try {
+    const server = await prisma.servidorDiscord.findUnique({
+      where: { course_id: req.params.courseId },
+    });
+    if (!server) return res.status(404).json({ error: 'No server linked' });
+
+    const discord_invite_url = await createPermanentInvite(server.discord_guild_id);
+    await prisma.servidorDiscord.update({
+      where: { course_id: req.params.courseId },
+      data: { discord_invite_url },
+    });
+    res.json({ discord_invite_url });
+  } catch (err: any) {
+    res.status(500).json({ error: err?.message ?? 'Failed to generate invite' });
+  }
+});
+
 router.post('/server', async (req: Request, res: Response) => {
   const { course_id, discord_guild_id, server_name } = req.body;
   const teacher_id = (req as any).user?.id;

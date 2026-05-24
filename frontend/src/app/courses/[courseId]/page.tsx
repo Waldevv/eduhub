@@ -104,6 +104,7 @@ export default function CourseDetails() {
   const [publishingUnitId, setPublishingUnitId] = useState<string | null>(null);
   const [copiedCode, setCopiedCode] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
+  const [generatingInvite, setGeneratingInvite] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -142,6 +143,18 @@ export default function CourseDetails() {
   const handleUnlinkServer = async () => {
     await discordApi.unlinkServer(courseId).catch(() => {});
     setDiscordServer(null);
+  };
+
+  const handleRegenerateInvite = async () => {
+    if (!discordServer) return;
+    setGeneratingInvite(true);
+    try {
+      const { discord_invite_url } = await discordApi.regenerateInvite(courseId);
+      setDiscordServer(prev => prev ? { ...prev, discord_invite_url } : prev);
+    } catch {
+    } finally {
+      setGeneratingInvite(false);
+    }
   };
 
   useEffect(() => { fetchData(); }, [fetchData]);
@@ -342,10 +355,16 @@ export default function CourseDetails() {
               </div>
               <div className="flex items-center gap-2">
                 {discordServer && (
-                  <Button variant="outline" size="sm" onClick={handleUnlinkServer}
-                    className="text-red-600 border-red-200 hover:bg-red-50">
-                    <Link2Off className="w-4 h-4 mr-2" />Desvincular
-                  </Button>
+                  <>
+                    <Button variant="outline" size="sm" onClick={handleRegenerateInvite} disabled={generatingInvite}>
+                      {generatingInvite ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Link2 className="w-4 h-4 mr-2" />}
+                      {discordServer.discord_invite_url ? 'Regerar Link' : 'Gerar Link de Entrada'}
+                    </Button>
+                    <Button variant="outline" size="sm" onClick={handleUnlinkServer}
+                      className="text-red-600 border-red-200 hover:bg-red-50">
+                      <Link2Off className="w-4 h-4 mr-2" />Desvincular
+                    </Button>
+                  </>
                 )}
                 {!discordServer && (
                   <Button variant="outline" size="sm" onClick={() => setLinkDiscordOpen(true)}>
@@ -354,6 +373,17 @@ export default function CourseDetails() {
                 )}
               </div>
             </div>
+
+            {discordServer?.discord_invite_url && !botMissing && (
+              <div className="mt-4 flex items-center gap-3 bg-indigo-50 border border-indigo-200 rounded-lg px-4 py-3">
+                <span className="text-xs text-slate-500">Link de entrada:</span>
+                <span className="text-sm font-mono text-indigo-700 flex-1 truncate">{discordServer.discord_invite_url}</span>
+                <button onClick={() => navigator.clipboard.writeText(discordServer.discord_invite_url!)}
+                  className="text-slate-400 hover:text-indigo-600 transition-colors">
+                  <Copy className="w-4 h-4" />
+                </button>
+              </div>
+            )}
 
             {botMissing && discordServer && (
               <div className="mt-4 flex items-center justify-between rounded-lg bg-red-50 border border-red-200 px-4 py-3">
