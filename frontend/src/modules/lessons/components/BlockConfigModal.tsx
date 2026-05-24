@@ -112,7 +112,7 @@ export function BlockConfigModal({ block, isOpen, onClose, onSave, allBlocks = [
     const isQuizBlock =
       ((editedBlock?.type === 'exam' || editedBlock?.type === 'activity') &&
         (!cfg?.activityType || cfg?.activityType === 'quiz')) ||
-      (editedBlock?.type === 'consolidation' && cfg?.consolidationType === 'quiz_review');
+      (editedBlock?.type === 'consolidation' && cfg?.consolidationType === 'quiz');
     if (isQuizBlock && !cfg?.maxScore) {
       setSaveError('Pontuação Máxima é obrigatória para blocos com quiz.');
       return;

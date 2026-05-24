@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import {
   ArrowLeft, CheckCircle, XCircle, Clock, AlertCircle,
   FileText, CheckSquare, MessageSquare, Target, Calculator, ClipboardList,
-  Award, ChevronDown, ChevronRight, ExternalLink, Pencil,
+  Award, ChevronDown, ChevronRight, ExternalLink, Pencil, Loader2,
 } from 'lucide-react';
 import { teacherApi, StudentProgressDetail, TeacherBlockDetail } from '@/lib/api';
 

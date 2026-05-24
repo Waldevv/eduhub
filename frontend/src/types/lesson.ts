@@ -45,6 +45,7 @@ export interface Block {
     channelSource?: 'new' | 'existing';
     existingChannelId?: string;
     completionCriteria?: string;
+    minMessages?: number;
     initialMessage?: string;
     voiceMode?: string;
     summaryType?: 'text' | 'file';
