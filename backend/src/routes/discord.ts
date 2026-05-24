@@ -14,6 +14,7 @@ import {
   createAnnouncementChannel,
   sendAnnouncementMessage,
   syncUnitDiscordAccess,
+  createPermanentInvite,
 } from '../lib/discord-bot';
 import { authMiddleware } from '../middleware/auth';
 
@@ -317,10 +318,17 @@ router.post('/server', async (req: Request, res: Response) => {
     return res.status(400).json({ error: 'Missing required fields' });
   }
   try {
+    let discord_invite_url: string | undefined;
+    try {
+      discord_invite_url = await createPermanentInvite(discord_guild_id);
+    } catch (err: any) {
+      console.warn('[link-server] invite creation failed:', err?.message ?? err);
+    }
+
     const server = await prisma.servidorDiscord.upsert({
       where: { course_id },
-      update: { discord_guild_id, server_name, is_active: true },
-      create: { course_id, teacher_id, discord_guild_id, server_name },
+      update: { discord_guild_id, server_name, is_active: true, ...(discord_invite_url ? { discord_invite_url } : {}) },
+      create: { course_id, teacher_id, discord_guild_id, server_name, discord_invite_url },
     });
     res.status(201).json(server);
   } catch {

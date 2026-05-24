@@ -326,6 +326,7 @@ export interface StudentDiscordServer {
   server_name: string;
   discord_guild_id: string;
   is_active: boolean;
+  discord_invite_url?: string | null;
 }
 
 export interface StudentCourseDetail extends Omit<StudentCourse, 'total_units'> {

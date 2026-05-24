@@ -639,6 +639,17 @@ export async function deleteDiscordChannel(channelId: string): Promise<void> {
   if (channel && 'delete' in channel) await (channel as any).delete();
 }
 
+export async function createPermanentInvite(guildId: string): Promise<string> {
+  const guild = await client.guilds.fetch(guildId);
+  const channels = await guild.channels.fetch();
+  const textChannel = channels.find(c => c?.type === ChannelType.GuildText);
+  if (!textChannel || !('createInvite' in textChannel)) {
+    throw new Error('No text channel found to create invite');
+  }
+  const invite = await (textChannel as any).createInvite({ maxAge: 0, maxUses: 0, unique: false });
+  return `https://discord.gg/${invite.code}`;
+}
+
 export async function sendMessageToChannel(channelId: string, content: string): Promise<void> {
   const channel = await client.channels.fetch(channelId);
   if (!channel || !(channel instanceof TextChannel)) {

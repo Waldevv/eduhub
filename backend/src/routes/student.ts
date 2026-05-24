@@ -65,7 +65,7 @@ router.get('/courses/:id', async (req: Request, res: Response) => {
       where: { id: req.params.id },
       include: {
         teacher: { select: { id: true, name: true, avatar: true } },
-        discord_server: { select: { id: true, server_name: true, discord_guild_id: true, is_active: true } },
+        discord_server: { select: { id: true, server_name: true, discord_guild_id: true, is_active: true, discord_invite_url: true } },
         units: {
           where: { is_published: true },
           orderBy: { sequence_order: 'asc' },

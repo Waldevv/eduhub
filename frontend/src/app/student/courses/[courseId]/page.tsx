@@ -235,16 +235,29 @@ export default function StudentCoursePage() {
                   <p className="text-sm text-slate-500">{course.discord_server.server_name}</p>
                 </div>
               </div>
-              <Button variant="outline" size="sm" asChild>
-                <a
-                  href={`https://discord.com/channels/${course.discord_server.discord_guild_id}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  <ExternalLink className="w-4 h-4 mr-2" />
-                  Entrar no Servidor
-                </a>
-              </Button>
+              {course.discord_server.discord_invite_url ? (
+                <Button variant="outline" size="sm" asChild>
+                  <a
+                    href={course.discord_server.discord_invite_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    Entrar no Servidor
+                  </a>
+                </Button>
+              ) : (
+                <Button variant="outline" size="sm" asChild>
+                  <a
+                    href={`https://discord.com/channels/${course.discord_server.discord_guild_id}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <ExternalLink className="w-4 h-4 mr-2" />
+                    Abrir Servidor
+                  </a>
+                </Button>
+              )}
             </div>
           </CardContent>
         </Card>

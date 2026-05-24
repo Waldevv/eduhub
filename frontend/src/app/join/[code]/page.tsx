@@ -122,7 +122,7 @@ export default function JoinCoursePage() {
               <CheckCircle className="w-10 h-10 text-green-500 mx-auto mb-3" />
               <p className="font-semibold text-slate-800 mb-1">Você entrou no curso!</p>
               <p className="text-sm text-slate-500 mb-4">Em breve você poderá acessar as aulas.</p>
-              <Button className="bg-teal-700 hover:bg-teal-800 w-full" onClick={() => router.push('/courses')}>
+              <Button className="bg-teal-700 hover:bg-teal-800 w-full" onClick={() => router.push('/student')}>
                 Ver Meus Cursos
               </Button>
             </div>

@@ -381,6 +381,7 @@ model ServidorDiscord {
   discord_guild_id   String  @unique
   server_name        String
   is_active          Boolean @default(true)
+  discord_invite_url String?
 
   course             Curso         @relation(fields: [course_id], references: [id], onDelete: Cascade)
   channels           CanalDiscord[]
