@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { studentApi, StudentCourseDetail, StudentUnit } from '@/lib/api';
@@ -9,9 +9,19 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
   ArrowLeft, BookOpen, CheckCircle2, Clock, Loader2, GraduationCap,
   CalendarDays, CalendarRange, ServerIcon, ExternalLink, KeyRound,
-  Copy, Check as CheckIcon, Lock,
+  Copy, Check as CheckIcon, Lock, LogOut,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -78,12 +88,69 @@ export default function StudentCoursePage() {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
+  const [inServer, setInServer] = useState<boolean | null>(null);
+  const [checkingMembership, setCheckingMembership] = useState(false);
+  const [leaveDialogOpen, setLeaveDialogOpen] = useState(false);
+  const [leavingServer, setLeavingServer] = useState(false);
+  const joiningRef = useRef(false);
+
   useEffect(() => {
     studentApi.getCourse(courseId)
       .then(setCourse)
       .catch(() => setError('Não foi possível carregar o curso.'))
       .finally(() => setLoading(false));
   }, [courseId]);
+
+  const checkMembership = async (courseData?: StudentCourseDetail | null) => {
+    const c = courseData ?? course;
+    if (!c?.discord_server?.is_active) return;
+    setCheckingMembership(true);
+    try {
+      const result = await studentApi.checkDiscordMembership(courseId);
+      setInServer(result.inServer);
+    } catch {
+      setInServer(null);
+    } finally {
+      setCheckingMembership(false);
+    }
+  };
+
+  useEffect(() => {
+    if (course?.discord_server?.is_active) {
+      checkMembership(course);
+    }
+  }, [course]);
+
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (!document.hidden && joiningRef.current) {
+        joiningRef.current = false;
+        checkMembership();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [course]);
+
+  const handleJoin = () => {
+    if (!course?.discord_server) return;
+    const url = course.discord_server.discord_invite_url
+      || `https://discord.com/channels/${course.discord_server.discord_guild_id}`;
+    window.open(url, '_blank');
+    joiningRef.current = true;
+  };
+
+  const handleLeaveConfirm = async () => {
+    setLeavingServer(true);
+    try {
+      await studentApi.leaveDiscordServer(courseId);
+      setInServer(false);
+    } catch {
+    } finally {
+      setLeavingServer(false);
+      setLeaveDialogOpen(false);
+    }
+  };
 
   if (loading) return (
     <div className="flex justify-center py-16">
@@ -105,6 +172,9 @@ export default function StudentCoursePage() {
   const completedUnits = course.units.filter(u => u.is_complete).length;
   const formatDate = (d: string | null) =>
     d ? format(new Date(d), "dd 'de' MMM 'de' yyyy", { locale: ptBR }) : '—';
+
+  const serverActive = !!course.discord_server?.is_active;
+  const serverBlocked = serverActive && inServer === false;
 
   return (
     <div>
@@ -222,7 +292,7 @@ export default function StudentCoursePage() {
         </Card>
       )}
 
-      {course.discord_server?.is_active && (
+      {serverActive && (
         <Card className="mb-6">
           <CardContent className="p-6">
             <div className="flex items-center justify-between">
@@ -232,58 +302,98 @@ export default function StudentCoursePage() {
                 </div>
                 <div>
                   <p className="text-sm font-semibold text-slate-800">Servidor Discord</p>
-                  <p className="text-sm text-slate-500">{course.discord_server.server_name}</p>
+                  <p className="text-sm text-slate-500">{course.discord_server!.server_name}</p>
                 </div>
               </div>
-              {course.discord_server.discord_invite_url ? (
-                <Button variant="outline" size="sm" asChild>
-                  <a
-                    href={course.discord_server.discord_invite_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
+              <div className="flex items-center gap-2">
+                {checkingMembership ? (
+                  <Loader2 className="w-4 h-4 animate-spin text-slate-400" />
+                ) : inServer === true ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="text-red-600 border-red-200 hover:bg-red-50 hover:text-red-700"
+                    onClick={() => setLeaveDialogOpen(true)}
                   >
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Sair do Servidor
+                  </Button>
+                ) : (
+                  <Button variant="outline" size="sm" onClick={handleJoin}>
                     <ExternalLink className="w-4 h-4 mr-2" />
                     Entrar no Servidor
-                  </a>
-                </Button>
-              ) : (
-                <Button variant="outline" size="sm" asChild>
-                  <a
-                    href={`https://discord.com/channels/${course.discord_server.discord_guild_id}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    <ExternalLink className="w-4 h-4 mr-2" />
-                    Abrir Servidor
-                  </a>
-                </Button>
-              )}
+                  </Button>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
       )}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Aulas do Curso ({course.units.length})</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {course.units.length === 0 ? (
-            <div className="text-center py-12">
-              <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
-                <Clock className="w-8 h-8 text-slate-400" />
+      <div className="relative">
+        <Card className={serverBlocked ? 'pointer-events-none select-none' : ''}>
+          <CardHeader>
+            <CardTitle>Aulas do Curso ({course.units.length})</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {course.units.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-4">
+                  <Clock className="w-8 h-8 text-slate-400" />
+                </div>
+                <p className="text-slate-600">Nenhuma aula publicada ainda.</p>
               </div>
-              <p className="text-slate-600">Nenhuma aula publicada ainda.</p>
+            ) : (
+              <div className="space-y-4">
+                {course.units.map((unit, i) => (
+                  <UnitRow key={unit.id} unit={unit} index={i} courseId={courseId} />
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {serverBlocked && (
+          <div className="absolute inset-0 rounded-xl backdrop-blur-sm bg-white/70 flex items-center justify-center z-10">
+            <div className="text-center px-6 py-8 max-w-sm">
+              <div className="w-14 h-14 rounded-full bg-indigo-100 flex items-center justify-center mx-auto mb-4">
+                <ServerIcon className="w-7 h-7 text-indigo-500" />
+              </div>
+              <p className="font-semibold text-slate-800 mb-1 text-lg">Entre no Servidor Discord</p>
+              <p className="text-sm text-slate-500 mb-5">
+                Você precisa estar no servidor Discord do curso para acessar as aulas.
+              </p>
+              <Button onClick={handleJoin}>
+                <ExternalLink className="w-4 h-4 mr-2" />
+                Entrar no Servidor
+              </Button>
             </div>
-          ) : (
-            <div className="space-y-4">
-              {course.units.map((unit, i) => (
-                <UnitRow key={unit.id} unit={unit} index={i} courseId={courseId} />
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+          </div>
+        )}
+      </div>
+
+      <AlertDialog open={leaveDialogOpen} onOpenChange={setLeaveDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sair do Servidor Discord?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Você será removido do servidor Discord do curso. Para acessar as aulas novamente,
+              precisará entrar no servidor.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={leavingServer}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleLeaveConfirm}
+              disabled={leavingServer}
+              className="bg-red-600 hover:bg-red-700 focus:ring-red-600"
+            >
+              {leavingServer && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+              Sair do Servidor
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

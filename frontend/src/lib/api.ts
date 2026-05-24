@@ -460,6 +460,12 @@ export const studentApi = {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+
+  checkDiscordMembership: (courseId: string) =>
+    request<{ inServer: boolean; reason?: string }>(`/api/student/discord-membership/${courseId}`),
+
+  leaveDiscordServer: (courseId: string) =>
+    request<{ ok: boolean }>(`/api/student/discord-leave/${courseId}`, { method: 'POST' }),
 };
 
 export interface TeacherBlock {

@@ -476,7 +476,28 @@ function AssignmentRenderer({ block, onComplete }: { block: StudentBlock; onComp
             className="w-full" style={{ height: 360 }} title="Material de apoio" />
         </div>
       )}
-      {materialType === 'link' && materialUrl && <LinkEmbed url={materialUrl} />}
+      {materialType === 'link' && materialUrl && (
+        <div className="space-y-2">
+          <LinkEmbed url={materialUrl} />
+          {!getLinkEmbed(materialUrl) && (
+            <a
+              href={materialUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-xl p-4 hover:bg-green-100 transition-colors group"
+            >
+              <div className="w-9 h-9 rounded-lg bg-green-200 flex items-center justify-center flex-shrink-0">
+                <ExternalLink className="w-4 h-4 text-green-700" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-green-800">Material de Apoio</p>
+                <p className="text-xs text-green-600 truncate mt-0.5">{materialUrl}</p>
+              </div>
+              <ExternalLink className="w-4 h-4 text-green-400 group-hover:text-green-600 flex-shrink-0" />
+            </a>
+          )}
+        </div>
+      )}
 
       {done ? (
         <div className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-xl p-4">
@@ -742,6 +763,23 @@ function ConsolidationRenderer({ block, onComplete }: { block: StudentBlock; onC
         {materialType === 'link' && materialUrl && (
           <div className="space-y-2">
             <LinkEmbed url={materialUrl} />
+            {!getLinkEmbed(materialUrl) && (
+              <a
+                href={materialUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 bg-orange-50 border border-orange-200 rounded-xl p-4 hover:bg-orange-100 transition-colors group"
+              >
+                <div className="w-9 h-9 rounded-lg bg-orange-200 flex items-center justify-center flex-shrink-0">
+                  <ExternalLink className="w-4 h-4 text-orange-700" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-orange-800">Material de Apoio</p>
+                  <p className="text-xs text-orange-600 truncate mt-0.5">{materialUrl}</p>
+                </div>
+                <ExternalLink className="w-4 h-4 text-orange-400 group-hover:text-orange-600 flex-shrink-0" />
+              </a>
+            )}
             <div className="flex justify-end">
               <Button size="sm" variant="outline" className="border-orange-200 text-orange-700 hover:bg-orange-50" asChild>
                 <a href={materialUrl} target="_blank" rel="noopener noreferrer">

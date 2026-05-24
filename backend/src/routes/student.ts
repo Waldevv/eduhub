@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
-import { syncUnitDiscordAccess } from '../lib/discord-bot';
+import { syncUnitDiscordAccess, client as discordClient } from '../lib/discord-bot';
 
 const router = Router();
 router.use(authMiddleware);
@@ -230,6 +230,62 @@ router.get('/units/:id', async (req: Request, res: Response) => {
     res.json({ ...unit, blocks: blocksWithStatus });
   } catch {
     res.status(500).json({ error: 'Failed to fetch unit' });
+  }
+});
+
+router.get('/discord-membership/:courseId', async (req: Request, res: Response) => {
+  const studentId = (req as AuthRequest).user!.id;
+  try {
+    const user = await prisma.usuario.findUnique({
+      where: { id: studentId },
+      select: { discord_id: true },
+    });
+    if (!user?.discord_id) return res.json({ inServer: false, reason: 'no_discord_id' });
+
+    const server = await prisma.servidorDiscord.findUnique({
+      where: { course_id: req.params.courseId },
+      select: { discord_guild_id: true, is_active: true },
+    });
+    if (!server?.is_active) return res.json({ inServer: false, reason: 'no_server' });
+
+    try {
+      const guild = await discordClient.guilds.fetch(server.discord_guild_id);
+      await guild.members.fetch(user.discord_id);
+      return res.json({ inServer: true });
+    } catch {
+      return res.json({ inServer: false });
+    }
+  } catch (err: any) {
+    res.status(500).json({ error: err.message ?? 'Failed to check membership' });
+  }
+});
+
+router.post('/discord-leave/:courseId', async (req: Request, res: Response) => {
+  const studentId = (req as AuthRequest).user!.id;
+  try {
+    const user = await prisma.usuario.findUnique({
+      where: { id: studentId },
+      select: { discord_id: true },
+    });
+    if (!user?.discord_id) return res.status(400).json({ error: 'No Discord account linked' });
+
+    const server = await prisma.servidorDiscord.findUnique({
+      where: { course_id: req.params.courseId },
+      select: { discord_guild_id: true },
+    });
+    if (!server) return res.status(404).json({ error: 'No server linked' });
+
+    try {
+      const guild = await discordClient.guilds.fetch(server.discord_guild_id);
+      const member = await guild.members.fetch(user.discord_id);
+      await member.kick('Student left course server via platform');
+    } catch {
+      // member may have already left
+    }
+
+    res.json({ ok: true });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message ?? 'Failed to leave server' });
   }
 });
 
