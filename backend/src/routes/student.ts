@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
-import { syncUnitDiscordAccess, client as discordClient } from '../lib/discord-bot';
+import { syncUnitDiscordAccess, syncCourseCategoryAccess, client as discordClient } from '../lib/discord-bot';
 
 const router = Router();
 router.use(authMiddleware);
@@ -356,6 +356,7 @@ router.post('/blocks/:id/complete', async (req: Request, res: Response) => {
     });
 
     syncUnitDiscordAccess(block.unit_id, studentId).catch(() => {});
+    syncCourseCategoryAccess(block.unit_id, studentId).catch(() => {});
 
     res.json({ ok: true });
   } catch {
@@ -479,7 +480,10 @@ router.post('/blocks/:id/quiz', async (req: Request, res: Response) => {
       },
     });
 
-    if (passed) syncUnitDiscordAccess(block.unit_id, studentId).catch(() => {});
+    if (passed) {
+      syncUnitDiscordAccess(block.unit_id, studentId).catch(() => {});
+      syncCourseCategoryAccess(block.unit_id, studentId).catch(() => {});
+    }
 
     res.json({
       score: earnedScore,
@@ -539,6 +543,7 @@ router.post('/blocks/:id/assignment', async (req: Request, res: Response) => {
     });
 
     syncUnitDiscordAccess(block.unit_id, studentId).catch(() => {});
+    syncCourseCategoryAccess(block.unit_id, studentId).catch(() => {});
 
     res.json({ ok: true, attempt_number: attemptCount + 1 });
   } catch (err: any) {

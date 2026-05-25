@@ -1,7 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { authMiddleware, AuthRequest } from '../middleware/auth';
-import { syncUnitDiscordAccess } from '../lib/discord-bot';
+import { syncUnitDiscordAccess, syncCourseCategoryAccess } from '../lib/discord-bot';
 
 const router = Router();
 
@@ -52,7 +52,10 @@ router.post('/join/:code', authMiddleware, async (req: Request, res: Response) =
     });
 
     prisma.unidade.findMany({ where: { course_id: course.id, is_published: true }, select: { id: true } })
-      .then((units) => units.forEach((u) => syncUnitDiscordAccess(u.id, studentId).catch(() => {})))
+      .then((units) => {
+        units.forEach((u) => syncUnitDiscordAccess(u.id, studentId).catch(() => {}));
+        if (units.length > 0) syncCourseCategoryAccess(units[0].id, studentId).catch(() => {});
+      })
       .catch(() => {});
 
     res.json({ ok: true, enrollment });

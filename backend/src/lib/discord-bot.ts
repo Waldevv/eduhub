@@ -159,6 +159,105 @@ export async function syncUnitDiscordAccess(unitId: string, studentId?: string):
   }
 }
 
+export async function syncCourseCategoryAccess(unitId: string, studentId?: string): Promise<void> {
+  if (!ready) return;
+
+  try {
+    const unit = await prisma.unidade.findUnique({ where: { id: unitId }, select: { course_id: true } });
+    if (!unit) return;
+
+    const server = await prisma.servidorDiscord.findUnique({
+      where: { course_id: unit.course_id },
+      select: { discord_guild_id: true },
+    });
+    if (!server) return;
+
+    const guild = await client.guilds.fetch(server.discord_guild_id);
+
+    const units = await prisma.unidade.findMany({
+      where: { course_id: unit.course_id, is_published: true, discord_category_id: { not: null } },
+      orderBy: { sequence_order: 'asc' },
+      select: {
+        id: true,
+        discord_category_id: true,
+        blocks: {
+          where: { status: { not: 'disabled' } },
+          select: { id: true, is_required: true },
+        },
+      },
+    });
+
+    if (units.length === 0) return;
+
+    const enrollments = await prisma.matricula.findMany({
+      where: {
+        course_id: unit.course_id,
+        status: 'active',
+        ...(studentId ? { student_id: studentId } : {}),
+      },
+      include: { student: { select: { id: true, discord_id: true } } },
+    });
+
+    const students = enrollments.map((e) => e.student).filter((s) => s.discord_id);
+    if (students.length === 0) return;
+
+    const allBlockIds = units.flatMap((u) => u.blocks.map((b) => b.id));
+
+    for (const student of students) {
+      const progressRecords = await prisma.progressoBloco.findMany({
+        where: { student_id: student.id, block_id: { in: allBlockIds } },
+        select: { block_id: true, is_completed: true, status: true },
+      });
+      const progressMap = new Map(progressRecords.map((p) => [p.block_id, p]));
+
+      // First incomplete unit is the student's current unit
+      let currentUnitIndex = units.length - 1;
+      for (let i = 0; i < units.length; i++) {
+        const requiredBlocks = units[i].blocks.filter((b) => b.is_required);
+        const unitDone = requiredBlocks.every((b) => {
+          const p = progressMap.get(b.id);
+          return p?.is_completed || p?.status === 'absent';
+        });
+        if (!unitDone) {
+          currentUnitIndex = i;
+          break;
+        }
+      }
+
+      let member: any;
+      try {
+        member = await guild.members.fetch(student.discord_id!);
+      } catch {
+        console.warn(`[bot] Discord user ${student.discord_id} not in guild — skipping category sync`);
+        continue;
+      }
+
+      for (let i = 0; i < units.length; i++) {
+        const categoryId = units[i].discord_category_id!;
+        try {
+          const category = await guild.channels.fetch(categoryId) as any;
+          if (!category?.permissionOverwrites) continue;
+
+          if (i <= currentUnitIndex) {
+            await category.permissionOverwrites.edit(member, { ViewChannel: true });
+            console.log(`[bot] ✅ Category granted: unit[${i + 1}] → student ${student.id}`);
+          } else {
+            const existing = category.permissionOverwrites.cache.get(member.id);
+            if (existing) {
+              await category.permissionOverwrites.delete(member);
+              console.log(`[bot] 🔒 Category revoked: unit[${i + 1}] → student ${student.id}`);
+            }
+          }
+        } catch (err: any) {
+          console.error(`[bot] Category permission error (unit ${units[i].id}):`, err?.message ?? err);
+        }
+      }
+    }
+  } catch (err: any) {
+    console.error('[bot] syncCourseCategoryAccess error:', err?.message ?? err);
+  }
+}
+
 async function completeInteractionBlock(studentId: string, blockId: string): Promise<void> {
   await prisma.progressoBloco.upsert({
     where: { block_id_student_id: { student_id: studentId, block_id: blockId } },
@@ -176,6 +275,9 @@ async function completeInteractionBlock(studentId: string, blockId: string): Pro
   if (block) {
     syncUnitDiscordAccess(block.unit_id, studentId).catch((err: any) =>
       console.error('[bot] syncUnitDiscordAccess after interaction completion:', err?.message)
+    );
+    syncCourseCategoryAccess(block.unit_id, studentId).catch((err: any) =>
+      console.error('[bot] syncCourseCategoryAccess after interaction completion:', err?.message)
     );
   }
 }
@@ -363,6 +465,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
     for (const unit of units) {
       await syncUnitDiscordAccess(unit.id);
     }
+    if (units.length > 0) {
+      await syncCourseCategoryAccess(units[0].id);
+    }
 
     const n = units.length;
     await interaction.editReply(`✅ Sincronização concluída! ${n} aula${n !== 1 ? 's' : ''} sincronizada${n !== 1 ? 's' : ''}.`);
@@ -439,6 +544,10 @@ export async function createLessonCategory(guildId: string, lessonTitle: string)
   const category = await guild.channels.create({
     name: lessonTitle,
     type: ChannelType.GuildCategory,
+    permissionOverwrites: [
+      { id: guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] },
+      ...(client.user ? [{ id: client.user.id, allow: [PermissionFlagsBits.ViewChannel] }] : []),
+    ],
   });
   return category.id;
 }

@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
-import { client, deleteDiscordChannel, syncUnitDiscordAccess } from '../lib/discord-bot';
+import { client, deleteDiscordChannel, syncUnitDiscordAccess, syncCourseCategoryAccess } from '../lib/discord-bot';
 import { authMiddleware } from '../middleware/auth';
 
 const router = Router();
@@ -80,6 +80,7 @@ router.patch('/:id', async (req: Request, res: Response) => {
 
     if (is_published === true) {
       syncUnitDiscordAccess(req.params.id).catch(() => {});
+      syncCourseCategoryAccess(req.params.id).catch(() => {});
     }
 
     res.json(unit);

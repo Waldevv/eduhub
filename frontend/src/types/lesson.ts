@@ -41,6 +41,7 @@ export interface Block {
     callType?: 'voice' | 'stage';
     scheduledAt?: string;
     eventDescription?: string;
+    joinWindowMinutes?: number;
     channelName?: string;
     channelSource?: 'new' | 'existing';
     existingChannelId?: string;

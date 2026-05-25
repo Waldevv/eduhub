@@ -14,6 +14,7 @@ import {
   createAnnouncementChannel,
   sendAnnouncementMessage,
   syncUnitDiscordAccess,
+  syncCourseCategoryAccess,
   createPermanentInvite,
 } from '../lib/discord-bot';
 import { authMiddleware } from '../middleware/auth';
@@ -289,6 +290,9 @@ router.post('/publish-lesson/:unitId', async (req: Request, res: Response) => {
 
     syncUnitDiscordAccess(req.params.unitId).catch((err: any) =>
       console.error('[publish-lesson] syncUnitDiscordAccess failed:', err?.message ?? err)
+    );
+    syncCourseCategoryAccess(req.params.unitId).catch((err: any) =>
+      console.error('[publish-lesson] syncCourseCategoryAccess failed:', err?.message ?? err)
     );
 
     res.json({ ok: true, created });
