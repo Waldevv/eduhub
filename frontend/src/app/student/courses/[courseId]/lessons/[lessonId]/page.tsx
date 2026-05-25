@@ -15,7 +15,7 @@ import {
   ArrowLeft, CheckCircle2, Lock, ChevronDown, ChevronUp,
   FileText, CheckSquare, MessageSquare, Target, Calculator, ClipboardList,
   Loader2, ExternalLink, Trophy, XCircle, RefreshCw, AlertCircle,
-  Download, Upload, Clock,
+  Download, Upload, Clock, UserX,
 } from 'lucide-react';
 import { uploadFile } from '@/lib/supabase';
 
@@ -1050,6 +1050,7 @@ function BlockCard({ block, allBlocks, unitId, onComplete, openBlockId, setOpenB
   const open = openBlockId === block.id;
   const isLocked = block.student_status === 'locked' && block.block_type !== 'evaluation';
   const isCompleted = block.student_status === 'completed';
+  const isAbsent = block.student_status === 'absent';
   const { bg, icon, badge, border, Icon } = blockStyle(block.block_type);
   const label = BLOCK_LABELS[block.block_type] ?? block.block_type;
   const c = (block.config_json ?? {}) as Record<string, unknown>;
@@ -1067,6 +1068,8 @@ function BlockCard({ block, allBlocks, unitId, onComplete, openBlockId, setOpenB
         <div className={`flex-shrink-0 w-11 h-11 ${bg} border ${border} rounded-xl flex items-center justify-center`}>
           {isLocked
             ? <Lock className="w-5 h-5 text-slate-400" />
+            : isAbsent
+            ? <UserX className={`w-5 h-5 ${icon}`} />
             : <Icon className={`w-6 h-6 ${icon}`} />}
         </div>
 
@@ -1091,16 +1094,19 @@ function BlockCard({ block, allBlocks, unitId, onComplete, openBlockId, setOpenB
           )}
           <span className={`inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full ${
             isCompleted ? 'bg-green-100 text-green-700' :
+            isAbsent    ? 'bg-red-100 text-red-600' :
             isLocked    ? 'bg-slate-100 text-slate-500' :
                           'bg-amber-100 text-amber-700'
           }`}>
             {isCompleted
               ? <CheckCircle2 className="w-3.5 h-3.5" />
+              : isAbsent
+              ? <UserX className="w-3.5 h-3.5" />
               : isLocked
               ? <Lock className="w-3.5 h-3.5" />
               : <Clock className="w-3.5 h-3.5" />}
             <span className="hidden sm:inline">
-              {isCompleted ? 'Concluído' : isLocked ? 'Bloqueado' : 'Pendente'}
+              {isCompleted ? 'Concluído' : isAbsent ? 'Ausente' : isLocked ? 'Bloqueado' : 'Pendente'}
             </span>
           </span>
           {isLocked
@@ -1113,6 +1119,15 @@ function BlockCard({ block, allBlocks, unitId, onComplete, openBlockId, setOpenB
 
       {open && !isLocked && (
         <div className="p-4 border-t border-slate-100">
+          {isAbsent && (
+            <div className="flex items-center gap-3 bg-red-50 border border-red-100 rounded-xl p-4 mb-4">
+              <UserX className="w-5 h-5 text-red-400 flex-shrink-0" />
+              <div>
+                <p className="text-sm font-semibold text-red-700">Ausência registrada</p>
+                <p className="text-xs text-red-500 mt-0.5">Você não entrou dentro do prazo do evento. O próximo bloco foi liberado.</p>
+              </div>
+            </div>
+          )}
           {block.block_type === 'content'      && <ContentRenderer      block={block} onComplete={handleComplete} />}
           {block.block_type === 'activity'     && <ActivityRenderer     block={block} onComplete={handleComplete} />}
           {block.block_type === 'exam'         && <ExamBlockRenderer    block={block} onComplete={handleComplete} />}
@@ -1226,6 +1241,7 @@ export default function StudentLessonPage() {
           {unit.blocks.map((block, idx) => {
             const isLast = idx === unit.blocks.length - 1;
             const isCompleted = block.student_status === 'completed';
+            const isAbsent = block.student_status === 'absent';
             const isLocked = block.student_status === 'locked';
             return (
               <div key={block.id} className="flex gap-3">
@@ -1233,12 +1249,16 @@ export default function StudentLessonPage() {
                   <div className={`w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center z-10 border-2 transition-colors ${
                     isCompleted
                       ? 'bg-green-100 border-green-200 text-green-700'
+                      : isAbsent
+                      ? 'bg-red-50 border-red-200 text-red-400'
                       : isLocked
                       ? 'bg-white border-slate-200 text-slate-400'
                       : 'bg-violet-400 border-violet-400 text-white'
                   }`}>
                     {isCompleted
                       ? <CheckCircle2 className="w-5 h-5" />
+                      : isAbsent
+                      ? <UserX className="w-4 h-4" />
                       : <span className="text-xs font-bold">{idx + 1}</span>}
                   </div>
                   {!isLast && <div className="w-0.5 flex-1 bg-slate-200 mt-1" />}

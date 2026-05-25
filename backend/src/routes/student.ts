@@ -199,14 +199,54 @@ router.get('/units/:id', async (req: Request, res: Response) => {
       return block;
     }));
 
+    const getWindowEnd = (b: any): Date | null => {
+      const cfg = (b.config_json ?? {}) as Record<string, unknown>;
+      const windowMinutes = Number(cfg.joinWindowMinutes ?? 30);
+      if (b.block_type === 'interaction' && b.interaction?.scheduled_at) {
+        const s = new Date(b.interaction.scheduled_at);
+        return new Date(s.getTime() + windowMinutes * 60000);
+      }
+      if (b.block_type === 'consolidation' && (cfg.consolidationType ?? 'quiz') === 'guided_stage' && b.consolidation?.scheduled_at) {
+        const s = new Date(b.consolidation.scheduled_at);
+        return new Date(s.getTime() + windowMinutes * 60000);
+      }
+      return null;
+    };
+
+    const now = new Date();
+
+    const blocksNeedingAbsent = blocksResolved.filter(b => {
+      const windowEnd = getWindowEnd(b);
+      if (!windowEnd || now <= windowEnd) return false;
+      const p = progressMap.get(b.id);
+      return !p?.is_completed && p?.status !== 'absent';
+    });
+
+    if (blocksNeedingAbsent.length > 0) {
+      await Promise.all(blocksNeedingAbsent.map(b =>
+        prisma.progressoBloco.upsert({
+          where: { block_id_student_id: { block_id: b.id, student_id: studentId } },
+          update: { status: 'absent' },
+          create: { block_id: b.id, student_id: studentId, status: 'absent', is_completed: false, started_at: now },
+        })
+      ));
+      const refreshed = await prisma.progressoBloco.findMany({
+        where: { block_id: { in: blocksNeedingAbsent.map(b => b.id) }, student_id: studentId },
+      });
+      for (const p of refreshed) progressMap.set(p.block_id, p);
+    }
+
     const blocksWithStatus = blocksResolved.map((block, index) => {
       const progress = progressMap.get(block.id);
       const isCompleted = progress?.is_completed ?? false;
+      const isAbsent = !isCompleted && progress?.status === 'absent';
 
-        let isAvailable = true;
+      let isAvailable = true;
       for (let i = 0; i < index; i++) {
         const prev = blocksResolved[i];
-        if (prev.is_required && !progressMap.get(prev.id)?.is_completed) {
+        const pp = progressMap.get(prev.id);
+        const prevDone = pp?.is_completed || pp?.status === 'absent';
+        if (prev.is_required && !prevDone) {
           isAvailable = false;
           break;
         }
@@ -220,7 +260,7 @@ router.get('/units/:id', async (req: Request, res: Response) => {
 
       return {
         ...block,
-        student_status: isCompleted ? 'completed' : isAvailable ? 'available' : 'locked',
+        student_status: isCompleted ? 'completed' : isAbsent ? 'absent' : isAvailable ? 'available' : 'locked',
         attempts_done: attemptsDone,
         latest_score: latestSub ? Number(latestSub.score) : null,
         latest_passed: latestSub?.is_approved ?? null,

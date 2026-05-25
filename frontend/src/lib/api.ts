@@ -402,7 +402,7 @@ export interface StudentBlock {
   is_required: boolean;
   completion_mode: string;
   config_json: Record<string, unknown> | null;
-  student_status: 'completed' | 'available' | 'locked';
+  student_status: 'completed' | 'available' | 'locked' | 'absent';
   attempts_done: number;
   latest_score: number | null;
   latest_passed: boolean | null;

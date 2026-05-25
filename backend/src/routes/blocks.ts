@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { prisma } from '../lib/prisma';
 import { authMiddleware } from '../middleware/auth';
+import { createDiscordScheduledEvent } from '../lib/discord-bot';
 
 const router = Router();
 
@@ -99,6 +100,64 @@ router.patch('/:id', async (req: Request, res: Response) => {
         });
       } else {
         await prisma.blocoAtividade.deleteMany({ where: { block_id: block.id } });
+      }
+    }
+
+    if (config_json) {
+      const cfg = config_json as Record<string, unknown>;
+      const scheduledAt = cfg.scheduledAt as string | undefined;
+
+      if (scheduledAt && new Date(scheduledAt) > new Date()) {
+        if (block.block_type === 'interaction') {
+          const inter = await prisma.blocoInteracao.findUnique({
+            where: { block_id: block.id },
+            include: { channel: { include: { server: true } } },
+          });
+          if (inter?.channel?.server) {
+            try {
+              await createDiscordScheduledEvent(
+                inter.channel.server.discord_guild_id,
+                inter.channel.discord_channel_id,
+                (cfg.channelName as string) || block.title,
+                new Date(scheduledAt),
+                cfg.eventDescription as string | undefined,
+              );
+              await prisma.blocoInteracao.update({
+                where: { block_id: block.id },
+                data: { scheduled_at: new Date(scheduledAt) },
+              });
+            } catch (err: any) {
+              console.warn('[patch-block] interaction event creation failed:', err?.message);
+            }
+          }
+        }
+
+        if (block.block_type === 'consolidation') {
+          const cfg2 = config_json as Record<string, unknown>;
+          if ((cfg2.consolidationType ?? '') === 'guided_stage') {
+            const cons = await prisma.blocoConsolidacao.findUnique({
+              where: { block_id: block.id },
+              include: { channel: { include: { server: true } } },
+            });
+            if (cons?.channel?.server) {
+              try {
+                await createDiscordScheduledEvent(
+                  cons.channel.server.discord_guild_id,
+                  cons.channel.discord_channel_id,
+                  (cfg2.channelName as string) || block.title,
+                  new Date(scheduledAt),
+                  cfg2.eventDescription as string | undefined,
+                );
+                await prisma.blocoConsolidacao.update({
+                  where: { block_id: block.id },
+                  data: { scheduled_at: new Date(scheduledAt) },
+                });
+              } catch (err: any) {
+                console.warn('[patch-block] consolidation event creation failed:', err?.message);
+              }
+            }
+          }
+        }
       }
     }
 

@@ -692,6 +692,18 @@ export function BlockConfigModal({ block, isOpen, onClose, onSave, allBlocks = [
                           onChange={(e) => updateConfig({ eventDescription: e.target.value })}
                         />
                       </div>
+                      <div className="space-y-2">
+                        <Label>Janela de entrada <span className="text-slate-400 font-normal text-xs ml-1">minutos após o início</span></Label>
+                        <Input
+                          type="number"
+                          min={5}
+                          max={240}
+                          value={editedBlock.config?.joinWindowMinutes ?? 30}
+                          onChange={(e) => updateConfig({ joinWindowMinutes: Math.max(5, parseInt(e.target.value) || 30) })}
+                          className="w-28"
+                        />
+                        <p className="text-xs text-slate-500">Estudantes que entrarem dentro desse prazo são marcados como presentes. Após o prazo, ausência é registrada automaticamente.</p>
+                      </div>
                     </div>
                   )}
 
@@ -905,6 +917,18 @@ export function BlockConfigModal({ block, isOpen, onClose, onSave, allBlocks = [
                           <Textarea rows={3} placeholder="Descreva o que será abordado nesta chamada..."
                             value={editedBlock.config?.eventDescription || ''}
                             onChange={(e) => updateConfig({ eventDescription: e.target.value })} />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Janela de entrada <span className="text-slate-400 font-normal text-xs ml-1">minutos após o início</span></Label>
+                          <Input
+                            type="number"
+                            min={5}
+                            max={240}
+                            value={editedBlock.config?.joinWindowMinutes ?? 30}
+                            onChange={(e) => updateConfig({ joinWindowMinutes: Math.max(5, parseInt(e.target.value) || 30) })}
+                            className="w-28"
+                          />
+                          <p className="text-xs text-slate-500">Estudantes que entrarem dentro desse prazo são marcados como presentes. Após o prazo, ausência é registrada automaticamente.</p>
                         </div>
                       </div>
                     </>
