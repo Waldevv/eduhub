@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import { prisma } from './lib/prisma';
 import coursesRouter from './routes/courses';
 import unitsRouter from './routes/units';
 import blocksRouter from './routes/blocks';
@@ -16,8 +17,13 @@ const PORT = process.env.PORT || 3001;
 app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:3000' }));
 app.use(express.json());
 
-app.get('/health', (_req, res) => {
-  res.json({ status: 'ok' });
+app.get('/health', async (_req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+    res.json({ status: 'ok', db: 'ok' });
+  } catch {
+    res.status(503).json({ status: 'ok', db: 'error' });
+  }
 });
 
 app.use('/api/courses', coursesRouter);
