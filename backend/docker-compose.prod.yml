@@ -1,0 +1,15 @@
+name: eduhub
+
+networks:
+  nexus_global_network:
+    external: true
+
+services:
+  app:
+    build: .
+    container_name: eduhub-api-prod
+    restart: unless-stopped
+    env_file:
+      - .env
+    networks:
+      - nexus_global_network
